@@ -22,4 +22,24 @@ class AndroidSendBirdGroupCallController{
     Map<String, dynamic> args = <String, dynamic>{};
     return await _channel.invokeMethod('answer_group_call', args);
   }
+
+  Future<bool> muteMicrophone() async{
+    return await _channel.invokeMethod('mute_microphone', <String, dynamic>{});
+  }
+
+  Future<bool> unmuteMicrophone() async{
+    return await _channel.invokeMethod('unmute_microphone', <String, dynamic>{});
+  }
+
+  Future<bool> startCamera() async{
+    return await _channel.invokeMethod('start_camera', <String, dynamic>{});
+  }
+
+  Future<bool> stopCamera() async{
+    return await _channel.invokeMethod('stop_camera', <String, dynamic>{});
+  }
+
+  Future<bool> switchCamera() async{
+    return await _channel.invokeMethod('switch_camera', <String, dynamic>{});
+  }
 }
