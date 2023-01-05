@@ -1,15 +1,19 @@
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import 'groupcall_view.dart';
 import 'sendbird_group_call_settings.dart';
 
 class SendBirdGroupCallView extends StatefulWidget implements GroupCallView {
-  const SendBirdGroupCallView({required this.groupCallOptions});
+  const SendBirdGroupCallView({required this.groupCallOptions, required this.gestureRecognizers});
 
   final SendBirdGroupCallSettings groupCallOptions;
+  final Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers;
 
   @override
   _SendBirdGroupCallViewState createState() => _SendBirdGroupCallViewState();
@@ -52,15 +56,22 @@ class _SendBirdGroupCallViewState extends State<SendBirdGroupCallView> {
             BuildContext context,
             PlatformViewController controller,
           ) {
-            return Container();
+            return AndroidViewSurface(
+              controller: controller as AndroidViewController,
+              gestureRecognizers: widget.gestureRecognizers ??
+                  const <Factory<OneSequenceGestureRecognizer>>{},
+              hitTestBehavior: PlatformViewHitTestBehavior.opaque,
+            );
           },
           onCreatePlatformView: (PlatformViewCreationParams params) {
             return _createAndroidViewController(
               hybridComposition: true,
               id: params.id,
-              viewType: 'com.pichillilorenzo/flutter_inappwebview',
+              viewType: 'com.sendbird/flutter_groupcall',
               layoutDirection: Directionality.maybeOf(context) ?? TextDirection.rtl,
-              creationParams: <String, dynamic>{},
+              creationParams: <String, dynamic>{
+                // TODO (nm-jiwonhae) : implement creationg params if required
+              },
             );
           });
     }
@@ -71,5 +82,8 @@ class _SendBirdGroupCallViewState extends State<SendBirdGroupCallView> {
     return Container();
   }
 
-  void _inferInitialSettings(SendBirdGroupCallSettings settings) {}
+  SendBirdGroupCallOptions _inferInitialSettings(SendBirdGroupCallSettings settings) {
+    // TODO(nm-jiwonhae) : create settings
+    return SendBirdGroupCallOptions();
+  }
 }

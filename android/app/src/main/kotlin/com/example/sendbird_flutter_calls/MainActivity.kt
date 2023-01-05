@@ -5,10 +5,7 @@ import androidx.annotation.NonNull
 import com.sendbird.calls.*
 import com.sendbird.calls.SendBirdCall.addListener
 import com.sendbird.calls.SendBirdCall.dial
-import com.sendbird.calls.handler.AuthenticateHandler
-import com.sendbird.calls.handler.DialHandler
-import com.sendbird.calls.handler.DirectCallListener
-import com.sendbird.calls.handler.SendBirdCallListener
+import com.sendbird.calls.handler.*
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.BinaryMessenger
@@ -17,10 +14,12 @@ import java.util.*
 
 
 class MainActivity: FlutterActivity() {
+    private val TAG = "TAG"
     private val METHOD_CHANNEL_NAME = "com.sendbird.calls/method"
     private val ERROR_CODE = "Sendbird Calls"
     private var methodChannel: MethodChannel? = null
     private var directCall: DirectCall? = null
+    private var groupCallRoom : Room? = null
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -32,6 +31,75 @@ class MainActivity: FlutterActivity() {
     override fun onDestroy() {
         disposeChannels()
         super.onDestroy()
+    }
+
+    fun fetchRoomById(roomId : String){
+        if(roomId.isNullOrEmpty()){
+            return
+        }
+
+        SendBirdCall.fetchRoomById(roomId, object : RoomHandler{
+            override fun onResult(room: Room?, e: SendBirdException?) {
+                TODO("Not yet implemented")
+            }
+        })
+    }
+
+
+    fun enterGroupCall(roomId : String, isAudioEnabled : Boolean, isVideoEnabled : Boolean){
+        groupCallRoom = SendBirdCall.getCachedRoomById(roomId)
+        groupCallRoom?.addListener(TAG, RoomListenerImpl())
+        val enterParams = EnterParams().setAudioEnabled(isAudioEnabled).setVideoEnabled(isVideoEnabled)
+        groupCallRoom?.enter(enterParams, object : CompletionHandler{
+            override fun onResult(e: SendBirdException?) {
+                // TODO (nm-jiwonhae) : handle send bird exception
+
+            }
+        })
+
+    }
+
+    fun exitGroupCall(){
+        groupCallRoom?.let{
+            try{
+                it.exit()
+            }catch(e : SendBirdException){
+                // TODO (nm-jiwonhae) : handle exit exception
+            }
+
+        }
+    }
+
+    fun muteMicrophone(){
+        groupCallRoom?.localParticipant?.muteMicrophone()
+    }
+
+    fun unmuteMicrophone(){
+        groupCallRoom?.localParticipant?.unmuteMicrophone()
+    }
+
+    fun startLocalVideo(){
+        groupCallRoom?.localParticipant?.startVideo()
+    }
+
+    fun stopLocalVideo(){
+        groupCallRoom?.localParticipant?.stopVideo()
+    }
+
+    fun switchCamera(){
+        groupCallRoom?.localParticipant?.switchCamera(object : CompletionHandler{
+            override fun onResult(e: SendBirdException?) {
+                // TODO(nm-jiwonhae) : handle switch camera exception
+            }
+        })
+    }
+
+    fun selectAudioDevice(audioDevice : AudioDevice){
+        groupCallRoom?.selectAudioDevice(audioDevice, object : CompletionHandler{
+            override fun onResult(e: SendBirdException?) {
+                // TODO (nm-jiwonhae) : select audio device
+            }
+        })
     }
 
     private fun setupChannels(context:Context, messenger: BinaryMessenger) {
@@ -89,6 +157,16 @@ class MainActivity: FlutterActivity() {
                     directCall?.end();
                     result.success(true);
                 }
+                "start_group_call"->{
+                 // TODO(nm-jiwonahe) : implement stat group calling
+                }
+                "stop_group_call"->{
+                    // TODO(nm-jiwonahe) : implement end group calling
+                }
+                "answer_group_call"->{
+                    // TODO(nm-jiwonahe) : implement end group calling
+                }
+
                 else -> {
                     result.notImplemented()
                 }
@@ -154,5 +232,43 @@ class MainActivity: FlutterActivity() {
 
     private fun disposeChannels(){
         methodChannel!!.setMethodCallHandler(null)
+    }
+
+    inner class RoomListenerImpl : RoomListener{
+        override fun onAudioDeviceChanged(
+            currentAudioDevice: AudioDevice?,
+            availableAudioDevices: Set<AudioDevice>
+        ) {
+            // TODO (nm-jiwonhae) : implement audio device change
+        }
+
+        override fun onError(e: SendBirdException, participant: Participant?) {
+
+            // TODO (nm-jiwonhae) : implement onError
+        }
+
+        override fun onRemoteAudioSettingsChanged(participant: RemoteParticipant) {
+
+            // TODO (nm-jiwonhae) : implement onRemoteAudioSettingsChanged
+        }
+
+        override fun onRemoteParticipantEntered(participant: RemoteParticipant) {
+
+            // TODO (nm-jiwonhae) : implement onRemoteParticipantEntered
+        }
+
+        override fun onRemoteParticipantExited(participant: RemoteParticipant) {
+
+            // TODO (nm-jiwonhae) : implement onRemoteParticipantExited
+        }
+
+        override fun onRemoteParticipantStreamStarted(participant: RemoteParticipant) {
+            // TODO (nm-jiwonhae) : implement onRemoteParticipantStreamStarted
+        }
+
+        override fun onRemoteVideoSettingsChanged(participant: RemoteParticipant) {
+            // TODO (nm-jiwonhae) : implement onRemoteVideoSettingsChanged
+        }
+
     }
 }
