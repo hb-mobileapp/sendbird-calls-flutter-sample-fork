@@ -1,14 +1,19 @@
 package com.example.sendbird_flutter_calls
 
+import android.Manifest
+import android.app.Activity
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import android.util.Log
 import androidx.annotation.NonNull
+import androidx.annotation.RequiresApi
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.sendbird.calls.*
 import com.sendbird.calls.SendBirdCall.addListener
 import com.sendbird.calls.SendBirdCall.dial
-import com.sendbird.calls.handler.AuthenticateHandler
-import com.sendbird.calls.handler.DialHandler
-import com.sendbird.calls.handler.DirectCallListener
-import com.sendbird.calls.handler.SendBirdCallListener
+import com.sendbird.calls.handler.*
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.BinaryMessenger
@@ -17,10 +22,14 @@ import java.util.*
 
 
 class MainActivity: FlutterActivity() {
+    private val TAG = MainActivity::class.java.simpleName
+
     private val METHOD_CHANNEL_NAME = "com.sendbird.calls/method"
     private val ERROR_CODE = "Sendbird Calls"
     private var methodChannel: MethodChannel? = null
     private var directCall: DirectCall? = null
+
+    private val ROOM_ID = "3a35bc15-9658-4cff-aee0-5d8d0611e2fd"
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -60,26 +69,38 @@ class MainActivity: FlutterActivity() {
                     }
                 }
                 "start_direct_call" -> {
-                    val calleeId: String? = call.argument("callee_id")
-                    if (calleeId == null) {
-                        result.error(ERROR_CODE, "Failed call", "Missing callee_id")
-                    }
-                    var params = DialParams(calleeId!!)
-                    params.setCallOptions(CallOptions())
-                    directCall = dial(params, object : DialHandler {
-                        override fun onResult(call: DirectCall?, e: SendBirdException?) {
-                            if (e != null) {
-                                result.error(ERROR_CODE, "Failed call", e.message)
-                                return
+                    Log.d(TAG, "test - $ROOM_ID")
+
+                    if (requestPermissions()) {
+                        SendBirdCall.fetchRoomById(ROOM_ID, object : RoomHandler {
+                            override fun onResult(room: Room?, e: SendBirdException?) {
+                                if (room == null || e != null) {
+                                    Log.e(TAG, "fetchRoomById/error - $e");
+                                    // Handle error.
+                                    return
+                                }
+
+                                // `room` with the identifier `ROOM_ID` is fetched from Sendbird Server.
+
+                                Log.d(TAG, "here")
+                                val enterParams = EnterParams()
+                                    .setAudioEnabled(true)
+                                    .setVideoEnabled(true)
+                                room.enter(enterParams, object : CompletionHandler {
+                                    override fun onResult(e: SendBirdException?) {
+                                        if (e != null) {
+                                            // Handle error.
+                                            Log.e(TAG, "error - $e");
+                                        }
+
+                                        // User has successfully entered `room`.
+                                    }
+                                })
                             }
-                            result.success(true)
-                        }
-                    })
-                    directCall?.setListener(object : DirectCallListener() {
-                        override fun onEstablished(call: DirectCall) {}
-                        override fun onConnected(call: DirectCall) {}
-                        override fun onEnded(call: DirectCall) {}
-                    })
+                        })
+                    } else {
+                        Log.e(TAG, "error!!")
+                    }
                 }
                 "answer_direct_call"->{
                     directCall?.accept(AcceptParams())
@@ -154,5 +175,27 @@ class MainActivity: FlutterActivity() {
 
     private fun disposeChannels(){
         methodChannel!!.setMethodCallHandler(null)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.S)
+    fun Activity.requestPermissions(): Boolean {
+        val permissions = listOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.BLUETOOTH_CONNECT
+        ).filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (permissions.isNotEmpty()) {
+            ActivityCompat.requestPermissions(
+                this,
+                permissions.toTypedArray(),
+                1
+            )
+            return false
+        }
+
+        return true
     }
 }
