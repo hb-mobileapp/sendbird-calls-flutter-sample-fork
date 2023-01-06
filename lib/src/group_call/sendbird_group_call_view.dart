@@ -5,15 +5,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:sendbird_flutter_calls/src/types/sendbird_error.dart';
 
 import 'groupcall_view.dart';
+import 'sendbird_group_call_controller.dart';
 import 'sendbird_group_call_settings.dart';
 
 class SendBirdGroupCallView extends StatefulWidget implements GroupCallView {
-  const SendBirdGroupCallView({required this.groupCallOptions, required this.gestureRecognizers});
+  const SendBirdGroupCallView({required this.groupCallOptions, required this.gestureRecognizers, this.onReceivedError});
 
   final SendBirdGroupCallSettings groupCallOptions;
   final Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers;
+  final void Function(SendbirdGroupCallController controller, SendbirdError error)? onReceivedError;
 
   @override
   _SendBirdGroupCallViewState createState() => _SendBirdGroupCallViewState();
@@ -49,9 +52,12 @@ class _SendBirdGroupCallViewState extends State<SendBirdGroupCallView> {
   Widget build(BuildContext context) {
     _inferInitialSettings(widget.groupCallOptions);
 
+    // TODO (nm-jiwonhae) : implement creationg params if required
+    final Map<String, dynamic> creationParams = <String, dynamic>{};
+
     if (Platform.isAndroid) {
       return PlatformViewLink(
-          viewType: 'com.sendbird/flutter_groupcall',
+          viewType: 'com.sendbird/video_call_view',
           surfaceFactory: (
             BuildContext context,
             PlatformViewController controller,
@@ -69,10 +75,8 @@ class _SendBirdGroupCallViewState extends State<SendBirdGroupCallView> {
               id: params.id,
               viewType: 'com.sendbird/flutter_groupcall',
               layoutDirection: Directionality.maybeOf(context) ?? TextDirection.rtl,
-              creationParams: <String, dynamic>{
-                // TODO (nm-jiwonhae) : implement creationg params if required
-              },
-            );
+              creationParams: creationParams,
+            )..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)..create();
           });
     }
 
