@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/textview_sample"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:text="fdsafdfdfa"
+        android:textColor="@android:color/black" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <com.sendbird.calls.SendBirdVideoView
+            android:id="@+id/participant_sendbird_video_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"/>
+
+        <com.sendbird.calls.SendBirdVideoView
+            android:id="@+id/local_sendbird_video_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"/>
+
+    </LinearLayout>
+
+
+
+<!--    <com.sendbird.calls.SendBirdVideoView-->
+<!--        android:id="@+id/local_sendbird_video_view"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content" />-->
+</LinearLayout>

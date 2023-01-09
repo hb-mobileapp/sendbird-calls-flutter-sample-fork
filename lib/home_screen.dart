@@ -1,4 +1,8 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'sendbird_channels.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -19,8 +23,16 @@ class _HomeScreenState extends State<HomeScreen> {
   String? callerNickname;
   SendbirdChannels? channels;
 
+  // This is used in the platform side to register the view.
+  String viewType = 'customView';
+
+  // Pass parameters to the platform side.
+  Map<String, dynamic> creationParams = <String, dynamic>{};
+
   final String appId = '90C24A19-CF1B-442F-8992-7FAA5FF4317D';
   final String userId = '12345';
+
+  bool _checkCallInit = false;
 
   @override
   void initState() {
@@ -29,12 +41,14 @@ class _HomeScreenState extends State<HomeScreen> {
         callerId = userId;
         callerNickname = nickname;
         _areReceivingCall = true;
+        _checkCallInit = false;
       });
     }), directCallConnected: () {
       setState(() {
         _areCalling = false;
         _areReceivingCall = false;
         _isCallActive = true;
+        _checkCallInit = true;
       });
     }, directCallEnded: () {
       setState(() {
@@ -45,11 +59,9 @@ class _HomeScreenState extends State<HomeScreen> {
         callerNickname = null;
       });
     }, onError: ((message) {
-      print(
-          "home_screen.dart: initState: SendbirdChannels: onError: message: $message");
+      print("home_screen.dart: initState: SendbirdChannels: onError: message: $message");
     }), onLog: ((message) {
-      print(
-          "home_screen.dart: initState: SendbirdChannels onLog: message: $message");
+      print("home_screen.dart: initState: SendbirdChannels onLog: message: $message");
     }));
     channels
         ?.initSendbird(
@@ -70,6 +82,16 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Container(
         padding: EdgeInsets.fromLTRB(20, 10, 20, 10),
         child: Column(children: [
+          SizedBox(
+            height: 300,
+            width: 300,
+            child: androidView(),
+          ),
+          // SizedBox(
+          //   height: 150,
+          //   width: 300,
+          //   child: androidViewTwo(),
+          // ),
           Row(children: [
             SizedBox(width: 240, child: Text("Connection status for $userId:")),
             Expanded(child: statusField()),
@@ -100,8 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ? Text("$callerId")
                       : Text("<No incoming calls>"),
             ),
-            Expanded(
-                child: _areReceivingCall ? receivingCallButton() : Container()),
+            Expanded(child: receivingCallButton()),
             Container(height: 20),
           ]),
           Container(height: 10),
@@ -109,6 +130,58 @@ class _HomeScreenState extends State<HomeScreen> {
         ]),
       ),
     );
+  }
+
+  Widget androidView() {
+    return PlatformViewLink(
+        surfaceFactory: (BuildContext context, PlatformViewController controller) {
+          return AndroidViewSurface(
+            controller: controller as AndroidViewController,
+            gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
+            hitTestBehavior: PlatformViewHitTestBehavior.opaque,
+          );
+        },
+        onCreatePlatformView: (PlatformViewCreationParams params) {
+          return PlatformViewsService.initSurfaceAndroidView(
+            id: params.id,
+            viewType: viewType,
+            layoutDirection: TextDirection.ltr,
+            creationParams: creationParams,
+            creationParamsCodec: const StandardMessageCodec(),
+            onFocus: () {
+              params.onFocusChanged(true);
+            },
+          )
+            ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)
+            ..create();
+        },
+        viewType: viewType);
+  }
+
+  Widget androidViewTwo() {
+    return PlatformViewLink(
+        surfaceFactory: (BuildContext context, PlatformViewController controller) {
+          return AndroidViewSurface(
+            controller: controller as AndroidViewController,
+            gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
+            hitTestBehavior: PlatformViewHitTestBehavior.opaque,
+          );
+        },
+        onCreatePlatformView: (PlatformViewCreationParams params) {
+          return PlatformViewsService.initSurfaceAndroidView(
+            id: params.id,
+            viewType: 'customViewSecond',
+            layoutDirection: TextDirection.ltr,
+            creationParams: creationParams,
+            creationParamsCodec: const StandardMessageCodec(),
+            onFocus: () {
+              params.onFocusChanged(true);
+            },
+          )
+            ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)
+            ..create();
+        },
+        viewType: viewType);
   }
 
   Widget dialRow() {

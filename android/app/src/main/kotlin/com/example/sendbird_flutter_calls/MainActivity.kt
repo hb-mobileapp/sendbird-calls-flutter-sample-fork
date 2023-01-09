@@ -10,32 +10,39 @@ import androidx.annotation.NonNull
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.example.sendbird_flutter_calls.plugins.PlatformViewPlugin
+import com.example.sendbird_flutter_calls.utils.factory.NativeViewFactory
+
 import com.sendbird.calls.*
-import com.sendbird.calls.SendBirdCall.addListener
-import com.sendbird.calls.SendBirdCall.dial
 import com.sendbird.calls.handler.*
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugins.GeneratedPluginRegistrant
 import java.util.*
 
 
-class MainActivity: FlutterActivity() {
-    private val TAG = MainActivity::class.java.simpleName
+class MainActivity : FlutterActivity() {
+    private val TAG = "MainActivity"
 
     private val METHOD_CHANNEL_NAME = "com.sendbird.calls/method"
     private val ERROR_CODE = "Sendbird Calls"
     private var methodChannel: MethodChannel? = null
     private var directCall: DirectCall? = null
 
-    private val ROOM_ID = "3a35bc15-9658-4cff-aee0-5d8d0611e2fd"
+    private val ROOM_ID = "2c797c78-41c0-429e-8d9c-475a6adf83c5"
 
+    private var remoteMember: RemoteParticipant? = null
+
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
+        GeneratedPluginRegistrant.registerWith(flutterEngine)
+        flutterEngine.plugins.add(PlatformViewPlugin(null))
         // Setup
-        setupChannels(this, flutterEngine.dartExecutor.binaryMessenger)
+        setupChannels(this, flutterEngine.dartExecutor.binaryMessenger, flutterEngine)
     }
 
     override fun onDestroy() {
@@ -43,10 +50,17 @@ class MainActivity: FlutterActivity() {
         super.onDestroy()
     }
 
-    private fun setupChannels(context:Context, messenger: BinaryMessenger) {
+
+    @RequiresApi(Build.VERSION_CODES.S)
+    private fun setupChannels(
+        context: Context,
+        messenger: BinaryMessenger,
+        flutterEngine: FlutterEngine
+    ) {
         methodChannel = MethodChannel(messenger, METHOD_CHANNEL_NAME)
+        requestPermissions()
         methodChannel!!.setMethodCallHandler { call, result ->
-            when(call.method) {
+            when (call.method) {
                 "init" -> {
                     val appId: String? = call.argument("app_id")
                     val userId: String? = call.argument("user_id")
@@ -54,13 +68,19 @@ class MainActivity: FlutterActivity() {
                         appId == null -> {
                             result.error(ERROR_CODE, "Failed Init", "Missing app_id")
                         }
+
                         userId == null -> {
                             result.error(ERROR_CODE, "Failed Init", "Missing user_id")
                         }
+
                         else -> {
-                            initSendbird(context, appId!!, userId!!) { successful ->
+                            initSendbird(context, appId, userId) { successful ->
                                 if (!successful) {
-                                    result.error(ERROR_CODE, "Failed init", "Problem initializing Sendbird. Check for valid app_id")
+                                    result.error(
+                                        ERROR_CODE,
+                                        "Failed init",
+                                        "Problem initializing Sendbird. Check for valid app_id"
+                                    )
                                 } else {
                                     result.success(true)
                                 }
@@ -68,48 +88,25 @@ class MainActivity: FlutterActivity() {
                         }
                     }
                 }
+
                 "start_direct_call" -> {
                     Log.d(TAG, "test - $ROOM_ID")
-
-                    if (requestPermissions()) {
-                        SendBirdCall.fetchRoomById(ROOM_ID, object : RoomHandler {
-                            override fun onResult(room: Room?, e: SendBirdException?) {
-                                if (room == null || e != null) {
-                                    Log.e(TAG, "fetchRoomById/error - $e");
-                                    // Handle error.
-                                    return
-                                }
-
-                                // `room` with the identifier `ROOM_ID` is fetched from Sendbird Server.
-
-                                Log.d(TAG, "here")
-                                val enterParams = EnterParams()
-                                    .setAudioEnabled(true)
-                                    .setVideoEnabled(true)
-                                room.enter(enterParams, object : CompletionHandler {
-                                    override fun onResult(e: SendBirdException?) {
-                                        if (e != null) {
-                                            // Handle error.
-                                            Log.e(TAG, "error - $e");
-                                        }
-
-                                        // User has successfully entered `room`.
-                                    }
-                                })
-                            }
-                        })
-                    } else {
-                        Log.e(TAG, "error!!")
-                    }
                 }
-                "answer_direct_call"->{
+
+                "answer_direct_call" -> {
                     directCall?.accept(AcceptParams())
                 }
+
                 "end_direct_call" -> {
                     // End a call
                     directCall?.end();
                     result.success(true);
                 }
+
+                "test_call" -> {
+                    Log.d(TAG, "check Main Activity")
+                }
+
                 else -> {
                     result.notImplemented()
                 }
@@ -117,16 +114,42 @@ class MainActivity: FlutterActivity() {
         }
     }
 
-    private fun initSendbird(context: Context, appId: String , userId: String, callback: (Boolean)->Unit){
+    private fun getStream(participant: RemoteParticipant, flutterEngine: FlutterEngine) {
+        Log.d(TAG, "getStream - ${participant.participantId}")
+
+
+
+
+//        flutterEngine.platformViewsController.attach(context, "custonView", flutterEngine.dartExecutor).get = participant.videoView
+//        flutterEngine.platformViewsController.registry.registerViewFactory(
+//            "customViewSecond",
+//            NativeViewFactory(flutterEngine.dartExecutor.binaryMessenger)
+//        )
+
+
+//        flutterEngine.platformViewsController.getPlatformViewById(0).apply {
+//            this?.findViewById<SendBirdVideoView>(R.id.participant_sendbird_video_view) = participant.videoView
+//        }
+//        Log.d(TAG, "test - ${flutterEngine.plugins.toString()}")
+//        methodChannel?.invokeMethod("stream_start") {
+//            Log.d(TAG, "getStream!! ${participant.participantId}")
+//        }
+    }
+
+    private fun initSendbird(
+        context: Context,
+        appId: String,
+        userId: String,
+        callback: (Boolean) -> Unit
+    ) {
         // Initialize SendBirdCall instance to use APIs in your app.
-        if(SendBirdCall.init(context, appId)){
+        if (SendBirdCall.init(context, appId)) {
             // Initialization successful
 
-                // Add event listeners
-            SendBirdCall.addListener(UUID.randomUUID().toString(), object: SendBirdCallListener() {
+            // Add event listeners
+            SendBirdCall.addListener(UUID.randomUUID().toString(), object : SendBirdCallListener() {
                 override fun onRinging(call: DirectCall) {
-
-                    methodChannel?.invokeMethod("direct_call_received"){
+                    methodChannel?.invokeMethod("direct_call_received") {
                     }
 
                     val ongoingCallCount = SendBirdCall.ongoingCallCount
@@ -139,7 +162,7 @@ class MainActivity: FlutterActivity() {
                         override fun onEstablished(call: DirectCall) {}
 
                         override fun onConnected(call: DirectCall) {
-                            methodChannel?.invokeMethod("direct_call_connected"){
+                            methodChannel?.invokeMethod("direct_call_connected") {
                             }
                         }
 
@@ -148,9 +171,10 @@ class MainActivity: FlutterActivity() {
                             if (ongoingCallCount == 0) {
 //                                CallService.stopService(context)
                             }
-                            methodChannel?.invokeMethod("direct_call_ended"){
+                            methodChannel?.invokeMethod("direct_call_ended") {
                             }
                         }
+
                         override fun onRemoteAudioSettingsChanged(call: DirectCall) {}
 
                     })
@@ -163,17 +187,17 @@ class MainActivity: FlutterActivity() {
 
         SendBirdCall.authenticate(params, object : AuthenticateHandler {
             override fun onResult(user: User?, e: SendBirdException?) {
-                    if (e == null) {
-                        // The user has been authenticated successfully and is connected to Sendbird server.
-                        callback(true)
-                    } else {
-                        callback(false)
-                    }
+                if (e == null) {
+                    // The user has been authenticated successfully and is connected to Sendbird server.
+                    callback(true)
+                } else {
+                    callback(false)
                 }
-            })
+            }
+        })
     }
 
-    private fun disposeChannels(){
+    private fun disposeChannels() {
         methodChannel!!.setMethodCallHandler(null)
     }
 
@@ -182,7 +206,8 @@ class MainActivity: FlutterActivity() {
         val permissions = listOf(
             Manifest.permission.CAMERA,
             Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.BLUETOOTH_CONNECT
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.ACCESS_COARSE_LOCATION
         ).filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }

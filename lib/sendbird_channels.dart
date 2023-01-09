@@ -49,6 +49,7 @@ class SendbirdChannels {
 
   // Handle incoming platform channel messages from native side
   Future<dynamic> _handleNativeMethods(MethodCall call) async {
+    print('handleNativeMethods');
     switch (call.method) {
       case "direct_call_received":
         final callerId = call.arguments['caller_id'];
@@ -73,6 +74,9 @@ class SendbirdChannels {
         final message = call.arguments['message'];
         onError?.call(message);
         return new Future.value("");
+      case "stream_start":
+        directCallConnected?.call();
+        return new Future.value("");
       default:
         // Unimplemented message received
         print(
@@ -82,19 +86,27 @@ class SendbirdChannels {
   }
 
   Future<bool> startCall(String calleeId) async {
+    print('startCall');
     final bool result = await platform.invokeMethod("start_direct_call", {
       "callee_id": calleeId,
     });
+
+
+
+    // await platform.invokeMethod("start_direct_call", {
+    //   "callee_id": calleeId,
+    // });
+
     return result;
   }
 
   Future<bool> pickupCall() async {
-    final bool result = await platform.invokeMethod("answer_direct_call", {});
+    final bool result = await platform.invokeMethod("test_call", {});
     return result;
   }
 
   Future<bool> endCall() async {
-    final bool result = await platform.invokeMethod("end_direct_call", {});
+    final bool result = await platform.invokeMethod("test_call", {});
     return result;
   }
 }
